@@ -1,0 +1,340 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Final Project\n",
+    "\n",
+    "Pulled data from: "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* Read in Seattle Crime Dataset"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "import pandas as pd\n",
+    "import matplotlib \n",
+    "import matplotlib.pyplot as plt\n",
+    "import seaborn as sns\n",
+    "file_name = 'SPD_Reports.csv'\n",
+    "crime_df = pd.read_csv(file_name)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* Drop Irrelevant Columns ('Offense Type', 'Offense End Date', 'Block', 'Beat', '2000 Census Tract', 'Longitude',     'Latitude', 'Report Date')\n",
+    "\n",
+    "* Reorder Columns to read 'Offense Start Date' -> 'Offense Description' -> 'District'\n",
+    "\n",
+    "* Rename 'Offense Start Date' to 'Offense Date'; just for readability\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "crime_df=crime_df.drop(columns=['Offense Type', 'Offense End Date', 'Block', 'Beat', '2000 Census Tract', 'Longitude', 'Latitude', 'Report Date'])\n",
+    "crime_df = crime_df[['Offense Start Date', 'Offense Description', 'District']]\n",
+    "crime_df.rename(columns = {'Offense Start Date':'Offense Date'}, inplace = True) "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* Convert 'Offense Date' to datetime\n",
+    "* Sort crime_df by ascending date (2007 - 2016("
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "crime_df['Offense Date'] = pd.to_datetime(crime_df['Offense Date'])\n",
+    "crime_df = crime_df.sort_values(by='Offense Date')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* Read in dataset from \"Did in rain in Seattle?\" \n",
+    "\n",
+    "* Convert Date feature to datetime object\n",
+    "\n",
+    "* Convert Rain feature to bool object"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {
+    "scrolled": true
+   },
+   "outputs": [],
+   "source": [
+    "f_name = 'seattleWeather_1948-2017.csv'\n",
+    "weather_df = pd.read_csv(f_name)\n",
+    "weather_df['DATE'] = pd.to_datetime(weather_df['DATE'])\n",
+    "weather_df['RAIN'] = weather_df['RAIN'].astype('bool')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* Filter both the crime_df and weather_df by year (2007 - 2016)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "weather_df = weather_df[(weather_df['DATE'].dt.year >= 2007) & \n",
+    "                        ((weather_df['DATE'].dt.year <= 2016) & (weather_df['DATE'].dt.month <= 9) & (weather_df['DATE'].dt.day <= 19))]\n",
+    "crime_df = crime_df[(crime_df['Offense Date'].dt.year >= 2007) & \n",
+    "                    ((crime_df['Offense Date'].dt.year <= 2017))]\n"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "* crime_df['Offense Date'] had a time value attached to it; first line of code just drops the time but keeps the date (So that it's easier to work with the weather_df)\n",
+    "\n",
+    "* Index of crime_df is changed to the date of incident\n",
+    "\n",
+    "* Index of weather_df is also changed to the date feature \n",
+    "\n",
+    "* Join the two dataframes together according to index (the date) \n",
+    "\n",
+    "    So if the dates match, the values from weather_df are assigned correctly "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "crime_df['Offense Date'] = crime_df['Offense Date'].dt.date\n",
+    "crime_df = crime_df.set_index('Offense Date')\n",
+    "weather_df = weather_df.set_index('DATE')\n",
+    "new_crime_df = crime_df.join(weather_df, lsuffix='_caller', rsuffix='_other')"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<div>\n",
+       "<style scoped>\n",
+       "    .dataframe tbody tr th:only-of-type {\n",
+       "        vertical-align: middle;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe tbody tr th {\n",
+       "        vertical-align: top;\n",
+       "    }\n",
+       "\n",
+       "    .dataframe thead th {\n",
+       "        text-align: right;\n",
+       "    }\n",
+       "</style>\n",
+       "<table border=\"1\" class=\"dataframe\">\n",
+       "  <thead>\n",
+       "    <tr style=\"text-align: right;\">\n",
+       "      <th></th>\n",
+       "      <th>Offense Description</th>\n",
+       "      <th>District</th>\n",
+       "      <th>PRCP</th>\n",
+       "      <th>TMAX</th>\n",
+       "      <th>TMIN</th>\n",
+       "      <th>RAIN</th>\n",
+       "    </tr>\n",
+       "  </thead>\n",
+       "  <tbody>\n",
+       "    <tr>\n",
+       "      <th>2007-01-01</th>\n",
+       "      <td>FRAUD</td>\n",
+       "      <td>F</td>\n",
+       "      <td>0.41</td>\n",
+       "      <td>48.0</td>\n",
+       "      <td>34.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2007-01-01</th>\n",
+       "      <td>VEHICLE THEFT</td>\n",
+       "      <td>J</td>\n",
+       "      <td>0.41</td>\n",
+       "      <td>48.0</td>\n",
+       "      <td>34.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2007-01-01</th>\n",
+       "      <td>FRAUD</td>\n",
+       "      <td>F</td>\n",
+       "      <td>0.41</td>\n",
+       "      <td>48.0</td>\n",
+       "      <td>34.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2007-01-01</th>\n",
+       "      <td>OTHER PROPERTY</td>\n",
+       "      <td>G</td>\n",
+       "      <td>0.41</td>\n",
+       "      <td>48.0</td>\n",
+       "      <td>34.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2007-01-01</th>\n",
+       "      <td>FRAUD</td>\n",
+       "      <td>E</td>\n",
+       "      <td>0.41</td>\n",
+       "      <td>48.0</td>\n",
+       "      <td>34.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>...</th>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "      <td>...</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-09-19</th>\n",
+       "      <td>ASSAULT</td>\n",
+       "      <td>C</td>\n",
+       "      <td>0.08</td>\n",
+       "      <td>68.0</td>\n",
+       "      <td>53.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-09-19</th>\n",
+       "      <td>OTHER PROPERTY</td>\n",
+       "      <td>U</td>\n",
+       "      <td>0.08</td>\n",
+       "      <td>68.0</td>\n",
+       "      <td>53.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-09-19</th>\n",
+       "      <td>SHOPLIFTING</td>\n",
+       "      <td>L</td>\n",
+       "      <td>0.08</td>\n",
+       "      <td>68.0</td>\n",
+       "      <td>53.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-09-19</th>\n",
+       "      <td>ASSAULT</td>\n",
+       "      <td>U</td>\n",
+       "      <td>0.08</td>\n",
+       "      <td>68.0</td>\n",
+       "      <td>53.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "    <tr>\n",
+       "      <th>2016-09-19</th>\n",
+       "      <td>ASSAULT</td>\n",
+       "      <td>E</td>\n",
+       "      <td>0.08</td>\n",
+       "      <td>68.0</td>\n",
+       "      <td>53.0</td>\n",
+       "      <td>True</td>\n",
+       "    </tr>\n",
+       "  </tbody>\n",
+       "</table>\n",
+       "<p>683720 rows × 6 columns</p>\n",
+       "</div>"
+      ],
+      "text/plain": [
+       "           Offense Description District  PRCP  TMAX  TMIN  RAIN\n",
+       "2007-01-01               FRAUD        F  0.41  48.0  34.0  True\n",
+       "2007-01-01       VEHICLE THEFT        J  0.41  48.0  34.0  True\n",
+       "2007-01-01               FRAUD        F  0.41  48.0  34.0  True\n",
+       "2007-01-01      OTHER PROPERTY        G  0.41  48.0  34.0  True\n",
+       "2007-01-01               FRAUD        E  0.41  48.0  34.0  True\n",
+       "...                        ...      ...   ...   ...   ...   ...\n",
+       "2016-09-19             ASSAULT        C  0.08  68.0  53.0  True\n",
+       "2016-09-19      OTHER PROPERTY        U  0.08  68.0  53.0  True\n",
+       "2016-09-19         SHOPLIFTING        L  0.08  68.0  53.0  True\n",
+       "2016-09-19             ASSAULT        U  0.08  68.0  53.0  True\n",
+       "2016-09-19             ASSAULT        E  0.08  68.0  53.0  True\n",
+       "\n",
+       "[683720 rows x 6 columns]"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "new_crime_df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.2"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}
